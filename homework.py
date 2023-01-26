@@ -135,7 +135,7 @@ def parse_status(homework):
                 f'"{homework.get("homework_name")}". '
                 f'{HOMEWORK_VERDICTS[homework.get("status")]}'
             )
- 
+
     except Exception as error:
         logging.error(error)
 
@@ -158,7 +158,7 @@ def main():
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            #logging.CRITICAL(message)
+            logging.ERROR(message)
         time.sleep(RETRY_PERIOD)
 
 
