@@ -1,12 +1,10 @@
-class NotAuthenticated(Exception):
-    """Исключение, если недействительный или некорректный токен."""
+class StatusCodeError(Exception):
+    """Исключение, если вернувшийся статус не 200."""
 
     pass
 
 
-class UnknownError(Exception):
-    """Исключение передаваемых параметров.
-    Если в запросе будет передано что-то неожиданное для сервиса.
-    """
+class UnknownStatusHomeWork(Exception):
+    """Исключение, если неизвестный статус ДЗ."""
 
     pass
