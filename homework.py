@@ -5,7 +5,7 @@ import telegram
 import requests
 from dotenv import load_dotenv
 from http import HTTPStatus
-from exceptions import StatusCodeError, UnknownStatusHomeWork
+from exceptions import StatusCodeError, ResponseException
 
 load_dotenv()
 logging.basicConfig(
@@ -13,7 +13,7 @@ logging.basicConfig(
     filename='main.log',
     format='%(asctime)s, %(levelname)s, %(message)s'
 )
-
+logger = logging.getLogger(__name__)
 
 PRACTICUM_TOKEN = os.getenv('YAPRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TGBOT_TOKEN')
@@ -38,12 +38,14 @@ def check_tokens() -> None:
     Если отсутствует хотя бы одна переменная окружения —
     продолжать работу бота нет смысла.
     """
-    if PRACTICUM_TOKEN is None:
-        raise TypeError('Невозможно получить токен Яндекс Практикума.')
-    if TELEGRAM_TOKEN is None:
-        raise TypeError('Невозможно получить токен Telegram Бота')
-    if TELEGRAM_CHAT_ID is None:
-        raise TypeError('Невозможо получить уникальный Chat ID Telegram')
+    if (
+        PRACTICUM_TOKEN is None
+        or TELEGRAM_TOKEN is None
+        or TELEGRAM_CHAT_ID is None
+    ):
+        message = 'Отсутствуют обязательные переменные.'
+        logger.critical(message)
+        raise TypeError(message)
 
 
 def send_message(bot, message) -> None:
@@ -59,9 +61,9 @@ def send_message(bot, message) -> None:
                 chat_id=TELEGRAM_CHAT_ID,
                 text=message
             )
-            logging.debug('Сообщение отправлено')
+            logger.debug('Сообщение отправлено')
     except Exception as error:
-        logging.error(f'Сообщение не отправлено. {error}')
+        logger.error(f'Сообщение не отправлено. {error}')
 
 
 def get_api_answer(timestamp):
@@ -79,17 +81,16 @@ def get_api_answer(timestamp):
                 'from_date': timestamp
             }
         )
+    except requests.RequestException as error:
+        raise ResponseException(error)
 
-        if homework_statuses.status_code == HTTPStatus.OK:
-            return homework_statuses.json()
-        else:
-            raise StatusCodeError(
-                f'Упс, возникла проблемка начальник. '
-                f'Статус код: {homework_statuses.status_code}'
-            )
-
-    except Exception as error:
-        logging.ERROR(error)
+    if homework_statuses.status_code == HTTPStatus.OK:
+        return homework_statuses.json()
+    else:
+        raise StatusCodeError(
+            f'Упс, возникла проблемка начальник. '
+            f'Статус код: {homework_statuses.status_code}'
+        )
 
 
 def check_response(response):
@@ -98,17 +99,13 @@ def check_response(response):
     В качестве параметра функция получает ответ API,
     приведенный к типам данных Python.
     """
-    try:
-        if type(response) != dict:
-            raise TypeError('Ожидаемый тип данных для response: dict')
-        if type(response.get('homeworks')) != list:
-            raise TypeError('Ожидаемый тип данных для homeworks: list')
-        if len(response.get('homeworks')) == 0:
-            raise TypeError('Отсутствуют данные о домашней работе')
-        return True
-    except Exception as error:
-        logging.ERROR(error)
-    return False
+    if type(response) != dict:
+        raise TypeError('Ожидаемый тип данных для response: dict')
+    if type(response.get('homeworks')) != list:
+        raise TypeError('Ожидаемый тип данных для homeworks: list')
+    if len(response.get('homeworks')) == 0:
+        raise TypeError('Отсутствуют данные о домашней работе')
+    return True
 
 
 def parse_status(homework):
@@ -120,24 +117,20 @@ def parse_status(homework):
     содержащую один из вердиктов словаря HOMEWORK_VERDICTS
     """
     global ACTUAL_STATUS
-    try:
-        if homework.get('homework_name') is None:
-            raise TypeError('В ответе отсутствует ключ homework_name')
-        if not (homework.get('status') in HOMEWORK_VERDICTS.keys()):
-            raise UnknownStatusHomeWork(
-                'Получен неизвестный статус домашней работы'
-            )
+    if homework.get('homework_name') is None:
+        raise TypeError('В ответе отсутствует ключ homework_name')
+    if not (homework.get('status') in HOMEWORK_VERDICTS.keys()):
+        raise TypeError(
+            'Получен неизвестный статус домашней работы'
+        )
 
-        if homework.get('status') != ACTUAL_STATUS:
-            ACTUAL_STATUS = homework.get('status')
-            return (
-                f'Изменился статус проверки работы '
-                f'"{homework.get("homework_name")}". '
-                f'{HOMEWORK_VERDICTS[homework.get("status")]}'
-            )
-
-    except Exception as error:
-        logging.error(error)
+    if homework.get('status') != ACTUAL_STATUS:
+        ACTUAL_STATUS = homework.get('status')
+        return (
+            f'Изменился статус проверки работы '
+            f'"{homework.get("homework_name")}". '
+            f'{HOMEWORK_VERDICTS[homework.get("status")]}'
+        )
 
 
 def main():
@@ -155,10 +148,10 @@ def main():
                     response.get('homeworks')[0]
                 )
                 send_message(bot, result)
-
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.ERROR(message)
+            logger.error(message)
+
         time.sleep(RETRY_PERIOD)
 
 
