@@ -13,19 +13,19 @@ logging.basicConfig(
     filename='main.log',
     format='%(asctime)s, %(levelname)s, %(message)s'
 )
-logger: logging.Logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-PRACTICUM_TOKEN: str = os.getenv('YAPRACTICUM_TOKEN')
-TELEGRAM_TOKEN: str = os.getenv('TGBOT_TOKEN')
-TELEGRAM_CHAT_ID: str = os.getenv('MY_CHAT_ID')
+PRACTICUM_TOKEN = os.getenv('YAPRACTICUM_TOKEN')
+TELEGRAM_TOKEN = os.getenv('TGBOT_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('MY_CHAT_ID')
 
 RETRY_PERIOD: int = 600
 ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
-HEADERS: dict[str, str] = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
+HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
 
-ACTUAL_STATUS: str = ''
-HOMEWORK_VERDICTS: dict[str, str] = {
+ACTUAL_STATUS = ''
+HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
@@ -48,7 +48,7 @@ def check_tokens() -> None:
         raise TypeError(message)
 
 
-def send_message(bot: telegram.bot.Bot, message: str or None) -> None:
+def send_message(bot, message) -> None:
     """
     Отправляет сообщение в Telegram чат.
     Чат оперделяется переменной окружения TELEGRAM_CHAT_ID.
@@ -66,7 +66,7 @@ def send_message(bot: telegram.bot.Bot, message: str or None) -> None:
         logger.error(f'Сообщение не отправлено. {error}')
 
 
-def get_api_answer(timestamp: int) -> dict or None:
+def get_api_answer(timestamp):
     """
     Делает запрос к единственному эндпоинту API-сервиса.
     В качестве параметра в функцию передается временная метка.
@@ -93,7 +93,7 @@ def get_api_answer(timestamp: int) -> dict or None:
         )
 
 
-def check_response(response: dict) -> bool or None:
+def check_response(response):
     """
     Проверяет ответ API на соответствие документации.
     В качестве параметра функция получает ответ API,
@@ -108,7 +108,7 @@ def check_response(response: dict) -> bool or None:
     return True
 
 
-def parse_status(homework: dict) -> str or None:
+def parse_status(homework):
     """
     Извлекает из информации о конкретной домашней работе статус этой работы.
     В качестве параметра функция получает только один элемент
@@ -137,12 +137,12 @@ def main():
     """Основная логика работы бота."""
     check_tokens()
 
-    bot: telegram.bot.Bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp: int = int(time.time())
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = int(time.time())
 
     while True:
         try:
-            response: dict = get_api_answer(timestamp)
+            response = get_api_answer(timestamp)
             if check_response(response):
                 result = parse_status(
                     response.get('homeworks')[0]
@@ -151,6 +151,7 @@ def main():
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
+
         time.sleep(RETRY_PERIOD)
 
 
