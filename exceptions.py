@@ -14,3 +14,9 @@ class ResponseException(Exception):
     """Исключение если не удалось выполнить запрос."""
 
     pass
+
+
+class TelegramSendMessageException(Exception):
+    """Исключение если боту не удалось отправить сообщение."""
+
+    pass

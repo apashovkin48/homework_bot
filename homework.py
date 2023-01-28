@@ -3,23 +3,21 @@ import os
 import time
 import telegram
 import requests
+import sys
 from dotenv import load_dotenv
 from http import HTTPStatus
-from exceptions import StatusCodeError, ResponseException
+from exceptions import (
+    StatusCodeError, ResponseException, TelegramSendMessageException
+)
 
 load_dotenv()
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename='main.log',
-    format='%(asctime)s, %(levelname)s, %(message)s'
-)
 logger = logging.getLogger(__name__)
 
 PRACTICUM_TOKEN = os.getenv('YAPRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TGBOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('MY_CHAT_ID')
 
-RETRY_PERIOD: int = 600
+RETRY_PERIOD: int = 6
 ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -32,6 +30,25 @@ HOMEWORK_VERDICTS = {
 }
 
 
+def check_content_message(func):
+    """
+    Проверка на повторяемость результатов.
+    Необходимо что бы бот постоянно не отправлял сообщения,
+    а только по факту изменения
+    """
+    message = ['']
+
+    def inner(args):
+        """inner."""
+        print(args)
+        print(message)
+        if message[0] != args:
+            message[0] = args
+            return func(message[0])
+
+    return inner
+
+
 def check_tokens() -> None:
     """
     Проверяет доступность переменных окружения.
@@ -39,13 +56,13 @@ def check_tokens() -> None:
     продолжать работу бота нет смысла.
     """
     if (
-        PRACTICUM_TOKEN is None
-        or TELEGRAM_TOKEN is None
-        or TELEGRAM_CHAT_ID is None
+        PRACTICUM_TOKEN is not None
+        and TELEGRAM_TOKEN is not None
+        and TELEGRAM_CHAT_ID is not None
     ):
-        message = 'Отсутствуют обязательные переменные.'
-        logger.critical(message)
-        raise TypeError(message)
+        return
+    logger.critical('Отсутствуют обязательные переменные.')
+    sys.exit(0)
 
 
 def send_message(bot, message) -> None:
@@ -57,13 +74,16 @@ def send_message(bot, message) -> None:
     """
     try:
         if message is not None:
+            logger.debug(f'Бот отправляет сообщение {message}')
             bot.send_message(
                 chat_id=TELEGRAM_CHAT_ID,
                 text=message
             )
             logger.debug('Сообщение отправлено')
-    except Exception as error:
-        logger.error(f'Сообщение не отправлено. {error}')
+    except telegram.TelegramError as error:
+        message = f'Сообщение не отправлено. {error}'
+        logger.error(message)
+        raise TelegramSendMessageException(message)
 
 
 def get_api_answer(timestamp):
@@ -99,15 +119,16 @@ def check_response(response):
     В качестве параметра функция получает ответ API,
     приведенный к типам данных Python.
     """
-    if type(response) != dict:
+    if not isinstance(response, dict):
         raise TypeError('Ожидаемый тип данных для response: dict')
-    if type(response.get('homeworks')) != list:
+    if not isinstance(response.get('homeworks'), list):
         raise TypeError('Ожидаемый тип данных для homeworks: list')
     if len(response.get('homeworks')) == 0:
         raise TypeError('Отсутствуют данные о домашней работе')
     return True
 
 
+@check_content_message
 def parse_status(homework):
     """
     Извлекает из информации о конкретной домашней работе статус этой работы.
@@ -116,30 +137,31 @@ def parse_status(homework):
     возвращает подготовленную для отправки в Telegram строку,
     содержащую один из вердиктов словаря HOMEWORK_VERDICTS
     """
-    global ACTUAL_STATUS
     if homework.get('homework_name') is None:
         raise TypeError('В ответе отсутствует ключ homework_name')
-    if not (homework.get('status') in HOMEWORK_VERDICTS.keys()):
+    if not (homework.get('status') in HOMEWORK_VERDICTS):
         raise TypeError(
             'Получен неизвестный статус домашней работы'
         )
-
-    if homework.get('status') != ACTUAL_STATUS:
-        ACTUAL_STATUS = homework.get('status')
-        return (
-            f'Изменился статус проверки работы '
-            f'"{homework.get("homework_name")}". '
-            f'{HOMEWORK_VERDICTS[homework.get("status")]}'
-        )
+    return (
+        f'Изменился статус проверки работы '
+        f'"{homework.get("homework_name")}". '
+        f'{HOMEWORK_VERDICTS[homework.get("status")]}'
+    )
 
 
 def main():
     """Основная логика работы бота."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='main.log',
+        format='%(asctime)s, %(levelname)s, %(message)s'
+    )
+
     check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
-
+    timestamp = 1674831185 #int(time.time())
     while True:
         try:
             response = get_api_answer(timestamp)
