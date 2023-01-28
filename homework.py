@@ -17,7 +17,7 @@ PRACTICUM_TOKEN = os.getenv('YAPRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TGBOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('MY_CHAT_ID')
 
-RETRY_PERIOD: int = 6
+RETRY_PERIOD: int = 600
 ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -30,7 +30,7 @@ HOMEWORK_VERDICTS = {
 }
 
 
-def check_content_message(func):
+def check_content_message():
     """
     Проверка на повторяемость результатов.
     Необходимо что бы бот постоянно не отправлял сообщения,
@@ -40,11 +40,11 @@ def check_content_message(func):
 
     def inner(args):
         """inner."""
-        print(args)
-        print(message)
+        print(message, args)
         if message[0] != args:
             message[0] = args
-            return func(message[0])
+            return message[0]
+        return None
 
     return inner
 
@@ -128,7 +128,6 @@ def check_response(response):
     return True
 
 
-@check_content_message
 def parse_status(homework):
     """
     Извлекает из информации о конкретной домашней работе статус этой работы.
@@ -161,7 +160,10 @@ def main():
     check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = 1674831185 #int(time.time())
+    # test unix time 1674831185
+    timestamp = int(time.time())
+    message_content = check_content_message()
+
     while True:
         try:
             response = get_api_answer(timestamp)
@@ -169,7 +171,8 @@ def main():
                 result = parse_status(
                     response.get('homeworks')[0]
                 )
-                send_message(bot, result)
+                message = message_content(result)
+                send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
