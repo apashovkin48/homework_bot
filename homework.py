@@ -151,12 +151,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        filename='main.log',
-        format='%(asctime)s, %(levelname)s, %(message)s'
-    )
-
     check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -181,4 +175,9 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='main.log',
+        format='%(asctime)s, %(levelname)s, %(message)s'
+    )
     main()
