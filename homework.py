@@ -40,7 +40,6 @@ def check_content_message():
 
     def inner(args):
         """inner."""
-        print(message, args)
         if message[0] != args:
             message[0] = args
             return message[0]
@@ -55,14 +54,11 @@ def check_tokens() -> None:
     Если отсутствует хотя бы одна переменная окружения —
     продолжать работу бота нет смысла.
     """
-    if (
-        PRACTICUM_TOKEN is not None
-        and TELEGRAM_TOKEN is not None
-        and TELEGRAM_CHAT_ID is not None
-    ):
+    if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         return
-    logger.critical('Отсутствуют обязательные переменные.')
-    sys.exit(0)
+    message = 'Отсутствуют обязательные переменные.'
+    logger.critical(message)
+    sys.exit(message)
 
 
 def send_message(bot, message) -> None:
