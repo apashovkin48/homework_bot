@@ -18,6 +18,13 @@ git clone https://github.com/apashovkin48/homework_bot.git
 ```
 cd homework_bot
 ```
+Установите виртуальное окружение и активируйте его:
+```
+python3 -m venv venv
+```
+```
+source venv/bit/activate
+```
 Запустите проект
 ```
 python3 homework.py
