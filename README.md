@@ -23,7 +23,7 @@ cd homework_bot
 python3 -m venv venv
 ```
 ```
-source venv/bit/activate
+source venv/bin/activate
 ```
 Запустите проект
 ```
